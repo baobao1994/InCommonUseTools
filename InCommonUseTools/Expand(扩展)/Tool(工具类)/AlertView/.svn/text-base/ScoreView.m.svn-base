@@ -1,0 +1,134 @@
+//
+//  ScoreView.m
+//  TigerLottery
+//
+//  Created by Legolas on 15/1/8.
+//  Copyright (c) 2015年 adcocoa. All rights reserved.
+//
+
+#import "ScoreView.h"
+#import "ScoreInfo.h"
+#import "SubTitleButton.h"
+
+#define kScoreViewBtnTag 100
+
+@interface ScoreView ()
+
+@property (nonatomic, retain) NSArray *scores;
+
+@end
+
+@implementation ScoreView
+
+- (instancetype)initWithFrame:(CGRect)frame score:(NSArray *)scores numberOfRow:(NSInteger)numOfRow alignment:(SubTitleAlignment)alignment {
+    if (self = [super initWithFrame:frame]) {
+        _section = 0;
+        _scores = scores;
+        _scorePerfix = @"";
+        if (scores && scores.count > 0) {
+            CGFloat scoreWidth = frame.size.width / numOfRow;
+            NSInteger row = (scores.count + numOfRow - 1) / numOfRow;
+            for (int i = 0; i < row; i++) {
+                for (int j = 0; j < numOfRow; j++) {
+                    NSInteger index = j + i * numOfRow;
+                    CGFloat width = scoreWidth;
+                    CGFloat height = frame.size.height / row;
+                    if (index < scores.count) {
+                        if ((scores.count % numOfRow) != 0 && index == (scores.count - 1)) {
+                            width = (numOfRow - (scores.count % numOfRow) + 1) * scoreWidth;
+                        }
+                        ScoreInfo *scoreInfo = [scores objectAtIndex:index];
+                        SubTitleButton *btn = [[SubTitleButton alloc] initWithFrame:CGRectMake(j * scoreWidth, i * height, width, height) subTitleAlignment:alignment];
+                        [btn addTarget:self action:@selector(selectBtn:) forControlEvents:UIControlEventTouchUpInside];
+                        btn.tag = index + kScoreViewBtnTag;
+                        [btn setSubTitleColor:UIColorFromHexColor(0x333333)];
+                        [btn.titleLabel setFont:[UIFont systemFontOfSize:15]];
+                        [btn subTitleFont:[UIFont systemFontOfSize:11]];
+                       
+                        UIImage *normalImage = [UIImage imageNamed:@"team_nor.png"];
+                        normalImage = [normalImage resizableImageWithCapInsets:UIEdgeInsetsMake(2, 2, 2, 2)];
+                        [btn setBackgroundImage:normalImage forState:UIControlStateNormal];
+                        
+                        UIImage *selectedImage = [UIImage imageNamed:@"bet_selected.png"];
+                        selectedImage = [selectedImage resizableImageWithCapInsets:UIEdgeInsetsMake(2, 2, 2, 2)];
+                        [btn setBackgroundImage:selectedImage forState:UIControlStateSelected];
+                        [btn setTitleColor:UIColorFromHexColor(0x999191) forState:UIControlStateNormal];
+                        [btn setTitleColor:[UIColor whiteColor] forState:UIControlStateSelected];
+                        //                    [btn setSubTitleAlignment:subTitleAlignmentBottom];
+                        [btn setTitle:scoreInfo.score forState:UIControlStateNormal];
+                        [btn setSubTitle:scoreInfo.odds];
+                        [self addSubview:btn];
+                    }
+                }
+            }
+        }else {
+            UILabel *waitSaleView = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, frame.size.height)];
+            waitSaleView.font = [UIFont systemFontOfSize:15.0];
+            waitSaleView.textAlignment = NSTextAlignmentCenter;
+            waitSaleView.textColor = UIColorFromHexColor(0x666161);
+            waitSaleView.text = @"未开售";
+            [self addSubview:waitSaleView];
+            UIView *line = [SystemConfig lineViewWithFrame:CGRectMake(0, frame.size.height, frame.size.width, 1)];
+            [self addSubview:line];
+            UIView *leftVerticalLine = [SystemConfig lineViewWithFrame:CGRectMake(0, 0, 1, frame.size.height)];
+            [self addSubview:leftVerticalLine];
+            UIView *rightVerticalLine = [SystemConfig lineViewWithFrame:CGRectMake(frame.size.width-1, 0, 1, frame.size.height)];
+            [self addSubview:rightVerticalLine];
+        }
+    }
+    return self;
+}
+
+- (void)selectBtnWithIndex:(NSInteger)index {
+    SubTitleButton *btn = (SubTitleButton *)[self viewWithTag:index + kScoreViewBtnTag];
+    [btn selectButton:YES];
+}
+
+- (IBAction)selectBtn:(SubTitleButton *)sender {
+    [sender selectButton:!sender.selected];
+    ScoreInfo *scoreInfo = [_scores objectAtIndex:sender.tag - kScoreViewBtnTag];
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:sender.tag inSection:_section];
+    DELEGATE_CALLBACK_TWO_PARAMETER(_delegate, @selector(didSelectItemAtIndex:scoreInfo:), indexPath, scoreInfo);
+}
+
+- (NSMutableArray *)selectedIndexPaths {
+    NSMutableArray *indexPaths = [[NSMutableArray alloc] init];
+    for (int i = 0; i < _scores.count; i++) {
+        SubTitleButton *btn = (SubTitleButton *)[self viewWithTag:i + kScoreViewBtnTag];
+        if (btn.selected) {
+            [indexPaths addObject:[NSIndexPath indexPathForRow:i inSection:_section]];
+        }
+    }
+    return indexPaths;
+}
+
+- (NSMutableArray *)selectedScores {
+    NSMutableArray *selectedScores = [[NSMutableArray alloc] init];
+    for (int i = 0; i < _scores.count; i++) {
+        SubTitleButton *btn = (SubTitleButton *)[self viewWithTag:i + kScoreViewBtnTag];
+        if (btn.selected) {
+            ScoreInfo *scoreInfo = [_scores objectAtIndex:btn.tag - kScoreViewBtnTag];
+//            if (_lotteryId == LotteryIdJZRQSPF) {
+//                scoreInfo.score = [NSString stringWithFormat:@"让球%@", scoreInfo.score];
+//            }
+            switch (_lotteryId) {
+                case LotteryIdJZRQSPF:
+                    scoreInfo.score = [NSString stringWithFormat:@"让球%@", scoreInfo.score];
+                    break;
+                case LotteryIdJLRFSF:
+                    scoreInfo.score = [NSString stringWithFormat:@"让分%@", scoreInfo.score];
+                    break;
+                case LotteryIdJLSFC:
+                    scoreInfo.score = [NSString stringWithFormat:@"%@%@", _scorePerfix, scoreInfo.score];
+                    break;
+                default:
+                    break;
+            }
+            [selectedScores addObject:scoreInfo];
+        }
+    }
+//    NSString *selectedScoreStr = [selectedScores componentsJoinedByString:@","];
+    return selectedScores;
+}
+
+@end

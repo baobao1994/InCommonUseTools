@@ -1,0 +1,54 @@
+//
+//  PrefixHeader.pch
+//  InCommonUseTools
+//
+//  Created by 郭伟文 on 2017/4/11.
+//  Copyright © 2017年 Baobao. All rights reserved.
+//
+
+#ifndef PrefixHeader_pch
+#define PrefixHeader_pch
+
+// Include any system framework and library headers here that should be included in all compilation units.
+// You will also need to set the Prefix Header build setting of one or more of your targets to reference this file.
+#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+
+#define isEmptyString(obj) ([(obj) respondsToSelector:@selector(length)]==NO || (obj)==nil || [(obj) isEqual:[NSNull null]] || [(obj) length]==0)
+#define safeArray(obj) ((obj != nil && [(obj) respondsToSelector:@selector(objectAtIndex:)]) ? (obj) : nil)
+#define safeDictionary(obj) ((obj != nil && [(obj) respondsToSelector:@selector(objectForKey:)]) ? (obj) : nil)
+
+// system version
+#define isIos7System [[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0
+
+// Delegate
+#define DELEGATE_CALLBACK(DELEGATE, SEL) if (DELEGATE && [DELEGATE respondsToSelector:SEL]) [DELEGATE performSelector:SEL]
+#define DELEGATE_CALLBACK_ONE_PARAMETER(DELEGATE, SEL, X) if (DELEGATE && [DELEGATE respondsToSelector:SEL]) [DELEGATE performSelector:SEL withObject:X]
+#define DELEGATE_CALLBACK_TWO_PARAMETER(DELEGATE, SEL, X, Y) if (DELEGATE && [DELEGATE respondsToSelector:SEL]) [DELEGATE performSelector:SEL withObject:X withObject:Y]
+
+// Safe releases
+
+#define RELEASE_SAFELY(__POINTER) { [__POINTER release]; __POINTER = nil; }
+#define INVALIDATE_TIMER(__TIMER) {if([__TIMER isValid]) {[__TIMER invalidate]; __TIMER = nil;} }
+
+#define DOCUMENT_PATH [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0]
+#define DELETE_FILE(FILEPATH) { if ([[NSFileManager defaultManager] fileExistsAtPath:FILEPATH]) {[[NSFileManager defaultManager] removeItemAtPath:FILEPATH error:nil];}}
+
+#define BYTE_TO_MB(byte) ((byte)/1024.0/1024.0)
+#define KB_TO_MB(kb) ((kb)/1024.0)
+#define BYTE_TO_KB(byte) ((byte)/1024.0)
+
+// UIColor
+#define RGBCOLOR(r,g,b) [UIColor colorWithRed:(r)/255.0f green:(g)/255.0f blue:(b)/255.0f alpha:1]
+#define UIColorFromHexColor(hexValue) [UIColor colorWithRed:((float)((hexValue & 0xFF0000) >> 16))/255.0 green:((float)((hexValue & 0xFF00) >> 8))/255.0 blue:((float)(hexValue & 0xFF))/255.0 alpha:1.0]
+#define UIColorFromHexColorA(hexValue,alp) [UIColor colorWithRed:((float)((hexValue & 0xFF0000) >> 16))/255.0 green:((float)((hexValue & 0xFF00) >> 8))/255.0 blue:((float)(hexValue & 0xFF))/255.0 alpha:alp]
+#define RandomColor [UIColor colorWithRed:arc4random_uniform(256)/255.0 green:arc4random_uniform(256)/255.0 blue:arc4random_uniform(256)/255.0 alpha:1.0]
+#define kRedColor UIColorFromHexColor(0xe62e2e)
+#define kBlueColor UIColorFromHexColor(0x2e73e6)
+#define kGreenColor UIColorFromHexColor(0x3b9663)
+#define kGrayColor UIColorFromHexColor(0x666161)
+
+#define UIScreenWidth [UIScreen mainScreen].bounds.size.width
+#define UIScreenHeight [UIScreen mainScreen].bounds.size.height
+
+#endif /* PrefixHeader_pch */

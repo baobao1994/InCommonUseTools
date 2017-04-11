@@ -1,0 +1,641 @@
+//
+//  ScoreAlertView.m
+//  TigerLottery
+//
+//  Created by Legolas on 15/1/7.
+//  Copyright (c) 2015年 adcocoa. All rights reserved.
+//
+
+#import "ScoreAlertView.h"
+#import "ScoreView.h"
+#import "ScoreInfo.h"
+#import "ScheduleInfo.h"
+#import "JZOddsConfig.h"
+
+#define kSectionHeaderHeight 20
+#define kNumOfBF 7
+#define kNumOfZJQ 4
+#define kNumOfBQC 3
+#define kNumOfSPF 3
+#define kNumOfSFC 2
+
+@interface ScoreAlertView ()
+
+//@property (nonatomic, retain) NSDictionary *odds;
+//@property (nonatomic, retain) NSMutableArray *selectedIndexPaths;
+//@property (nonatomic, retain) NSMutableArray *selectedScores;
+@property (nonatomic, retain) ScheduleInfo *scheduleInfo;
+@property (nonatomic, assign) LotteryId lotteryId;
+@property (nonatomic, retain) NSArray *scoreViews;
+
+@end
+
+@implementation ScoreAlertView
+
+- (instancetype)initWithType:(LotteryId)type scheduleInfo:(ScheduleInfo *)scheduleInfo {
+    if (self = [super init]) {
+//        _odds = odds;
+        _scheduleInfo = scheduleInfo;
+        _lotteryId = type;
+//        _selectedIndexPaths = [[NSMutableArray alloc] init];
+//        _selectedScores = [[NSMutableArray alloc] init];
+        switch (type) {
+            case LotteryIdJZBF:
+                self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 367)];
+//                _odds = [scheduleInfo.bettingOdds objectForKey:ScoreScoresKey];
+                [self createBFContentView];
+                break;
+             case LotteryIdJZZJQ:
+                self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 150)];
+//                _odds = [scheduleInfo.bettingOdds objectForKey:ScoreBallsKey];
+                [self createZJQContentView];
+                break;
+             case LotteryIdJZHHGG:
+            {
+                self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 443)];
+                UIScrollView *scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 35, 300, self.contentView.frame.size.height - 44 - 35)];
+                [self.contentView addSubview:scrollView];
+                [self createHHGGContentView:scrollView];
+            }
+                break;
+            case LotteryIdJZBQC:
+                self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 182)];
+                [self createBQCContentView];
+                break;
+            case LotteryIdJLSFC:
+                self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 282)];
+                [self createSFCContentView];
+                break;
+            case LotteryIdJLHHGG:
+                self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 420)];
+                [self createJLHHContentView];
+                break;
+            default:
+                break;
+        }
+
+        CGSize screenSize = [UIScreen mainScreen].bounds.size;
+        self.contentView.center = CGPointMake(screenSize.width / 2, screenSize.height / 2);
+        self.contentView.backgroundColor = UIColorFromHexColor(0xf2f2f2);
+        
+        [self createTitleView];
+        [self setupSelectScore];
+
+        [self createBtnWithTitle:@"取消" originX:0 action:@selector(hide)];
+        [self createBtnWithTitle:@"确认" originX:150 action:@selector(confimSelectedScore)];
+        UIView *line = [SystemConfig lineViewWithFrame:CGRectMake(0, self.contentView.frame.size.height - 44, self.contentView.frame.size.width, 1)];
+        [self.contentView addSubview:line];
+        UIView *lineH = [SystemConfig lineViewWithFrame:CGRectMake(self.contentView.frame.size.width / 2, self.contentView.frame.size.height - 44, 1, 44)];
+        [self.contentView addSubview:lineH];
+    }
+    return self;
+}
+
+#pragma mark - ScoreViewDelegate
+
+- (void)didSelectItemAtIndex:(NSIndexPath *)indexPath scoreInfo:(ScoreInfo *)scoreInfo {
+//    [_selectedIndexPaths addObject:indexPath];
+//    [_selectedScores addObject:scoreInfo.score];
+}
+
+#pragma mark - Private Method
+
+- (void)createTitleView {
+    UILabel *homeLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.contentView.frame.size.width / 2 - 30, 35)];
+    [homeLabel setTextColor:UIColorFromHexColor(0x333131)];
+    [homeLabel setTextAlignment:NSTextAlignmentRight];
+    [self.contentView addSubview:homeLabel];
+    
+    UILabel *guestLabel = [[UILabel alloc] initWithFrame:CGRectMake(self.contentView.frame.size.width / 2 + 30, 0, 100, 35)];
+    [guestLabel setTextColor:UIColorFromHexColor(0x333131)];
+    [guestLabel setTextAlignment:NSTextAlignmentLeft];
+    [self.contentView addSubview:guestLabel];
+    
+    UILabel *vsLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 30, 35)];
+    vsLabel.center = CGPointMake(self.contentView.frame.size.width / 2, vsLabel.frame.size.height / 2);
+    [vsLabel setText:@"VS"];
+    [vsLabel setTextColor:UIColorFromHexColor(0x666161)];
+    [vsLabel setTextAlignment:NSTextAlignmentCenter];
+    [self.contentView addSubview:vsLabel];
+    
+    switch (_lotteryId) {
+        case LotteryIdJLHHGG:
+            [homeLabel setText:[NSString stringWithFormat:@"%@(客)", _scheduleInfo.guestTeam]];
+            [guestLabel setText:[NSString stringWithFormat:@"%@(主)", _scheduleInfo.homeTeam]];
+            break;
+        case LotteryIdJLSFC:
+            [homeLabel setText:[NSString stringWithFormat:@"%@(客)", _scheduleInfo.guestTeam]];
+            [guestLabel setText:[NSString stringWithFormat:@"%@(主)", _scheduleInfo.homeTeam]];
+            break;
+        default:
+            [homeLabel setText:_scheduleInfo.homeTeam];
+            [guestLabel setText:_scheduleInfo.guestTeam];
+            break;
+    }
+}
+
+- (void)setupSelectScore {
+    //    NSArray *indexPaths = [_scheduleInfo.selectedItem objectForKey:@(_lotteryId)];
+    for (NSIndexPath *indexPath in _scheduleInfo.selectedItem) {
+        ScoreView *scoreView = [_scoreViews objectAtIndex:indexPath.section];
+        [scoreView selectBtnWithIndex:indexPath.row];
+    }
+}
+
+- (void)confimSelectedScore {
+    [_scheduleInfo.selectedScores removeAllObjects];
+    [_scheduleInfo.selectedItem removeAllObjects];
+    for (ScoreView *scoreView in _scoreViews) {
+        [_scheduleInfo.selectedItem addObjectsFromArray:[scoreView selectedIndexPaths]];
+        NSMutableArray *selectedScores = [_scheduleInfo.selectedScores objectForKey:@(scoreView.lotteryId)];
+        if (selectedScores == nil) {
+            selectedScores = [[NSMutableArray alloc] init];
+        }
+        [selectedScores addObjectsFromArray:[scoreView selectedScores]];
+        if (selectedScores.count > 0) {
+            [_scheduleInfo.selectedScores setObject:selectedScores forKey:@(scoreView.lotteryId)];
+
+        }
+    }
+    [self hide];
+    DELEGATE_CALLBACK_ONE_PARAMETER(_delegate, @selector(didSelectedScheduleInfo:), _scheduleInfo);
+}
+
+#pragma mark - JCZQ
+
+- (void)createBFContentView {
+    CGFloat y = 35;
+    CGFloat width = self.contentView.frame.size.width - 10 * 2;
+    [self createSectionHeaderWithTitle:@"胜" originY:y bgColor:UIColorFromHexColor(0xe73f40) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    ScoreView *winView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 80) score:[self getWinScoreInfos] numberOfRow:kNumOfBF alignment:subTitleAlignmentBottom];
+    winView.delegate = self;
+    winView.lotteryId = _lotteryId;
+    [self.contentView addSubview:winView];
+    
+    y += winView.frame.size.height + 10;
+    [self createSectionHeaderWithTitle:@"平" originY:y bgColor:UIColorFromHexColor(0xffb525) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    ScoreView *drawView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 40) score:[self getDrawScoreInfos] numberOfRow:kNumOfBF alignment:subTitleAlignmentBottom];
+    drawView.delegate = self;
+    drawView.section = 1;
+    drawView.lotteryId = _lotteryId;
+    [self.contentView addSubview:drawView];
+    
+    y += drawView.frame.size.height + 10;
+    [self createSectionHeaderWithTitle:@"负" originY:y bgColor:UIColorFromHexColor(0x41b43b) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    ScoreView *loseView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 80) score:[self getLoseScoreInfos] numberOfRow:kNumOfBF alignment:subTitleAlignmentBottom];
+    loseView.delegate = self;
+    loseView.section = 2;
+    loseView.lotteryId = _lotteryId;
+    [self.contentView addSubview:loseView];
+    
+    _scoreViews = @[winView, drawView, loseView];
+    
+}
+
+- (void)createZJQContentView {
+    CGFloat y = 35;
+    CGFloat width = self.contentView.frame.size.width - 10 * 2;
+    [self createSectionHeaderWithTitle:@"总进球" originY:y bgColor:UIColorFromHexColor(0xe62e2e) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    ScoreView *ballView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 50) score:[self getZJQScoreInfos] numberOfRow:kNumOfZJQ alignment:subTitleAlignmentBottom];
+    ballView.lotteryId = _lotteryId;
+    ballView.delegate = self;
+    [self.contentView addSubview:ballView];
+    _scoreViews = @[ballView];
+}
+
+- (void)createBQCContentView {
+    CGFloat y = 35;
+    CGFloat width = self.contentView.frame.size.width - 10 * 2;
+    [self createSectionHeaderWithTitle:@"半全场" originY:y bgColor:UIColorFromHexColor(0xe62e2e) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    ScoreView *halfView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 75) score:[self getBQCScoreInfos] numberOfRow:kNumOfBQC alignment:subTitleAlignmentLeft];
+    halfView.lotteryId = _lotteryId;
+    [self.contentView addSubview:halfView];
+    _scoreViews = @[halfView];
+}
+
+- (void)createHHGGContentView:(UIScrollView *)scrollView {
+    CGFloat y = 0;
+    CGFloat width = self.contentView.frame.size.width - 10 * 2;
+    [self createSectionHeaderWithTitle:@"让球胜平负" originY:y bgColor:UIColorFromHexColor(0xe62e2e) superView:scrollView];
+    y += kSectionHeaderHeight;
+    CGFloat pointLabelWidth = 14;
+    UILabel *noConcedeLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, y, pointLabelWidth, 25)];
+    [noConcedeLabel setBackgroundColor:UIColorFromHexColor(0xdcdcdc)];
+    [noConcedeLabel setFont:[UIFont systemFontOfSize:10]];
+    [noConcedeLabel setTextAlignment:NSTextAlignmentCenter];
+    [noConcedeLabel setTextColor:[UIColor whiteColor]];
+    noConcedeLabel.text = @"0";
+    [scrollView addSubview:noConcedeLabel];
+    UILabel *concedeLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, y + 25, pointLabelWidth, 25)];
+    NSDictionary *scoreOdds = [_scheduleInfo.bettingOdds objectForKey:ScoreConcedeKey];
+    NSInteger letPoint = [[scoreOdds objectForKey:JZOddsRQSPFPoint] integerValue];
+    if (letPoint > 0) {
+        [concedeLabel setBackgroundColor:UIColorFromHexColor(0xf0c930)];
+    }else {
+        [concedeLabel setBackgroundColor:UIColorFromHexColor(0x41b43b)];
+    }
+    [concedeLabel setText:[NSString stringWithFormat:@"%+li", (long)letPoint]];
+    [concedeLabel setFont:[UIFont systemFontOfSize:10]];
+    [concedeLabel setTextAlignment:NSTextAlignmentCenter];
+    [concedeLabel setTextColor:[UIColor whiteColor]];
+    [scrollView addSubview:concedeLabel];
+
+    NSInteger section = 0;
+    ScoreView *noConcedeView = [[ScoreView alloc] initWithFrame:CGRectMake(10 + pointLabelWidth, y, width - pointLabelWidth, 25) score:[self getSPFScoreInfos] numberOfRow:kNumOfSPF alignment:subTitleAlignmentLeft];
+    noConcedeView.delegate = self;
+    noConcedeView.section = section++;
+    noConcedeView.lotteryId = LotteryIdJZSPF;
+    [scrollView addSubview:noConcedeView];
+    
+    y += noConcedeView.frame.size.height;
+    ScoreView *concedeView = [[ScoreView alloc] initWithFrame:CGRectMake(10 + pointLabelWidth, y, width - pointLabelWidth, 25) score:[self getRQSPFScoreInfos:scoreOdds] numberOfRow:kNumOfSPF alignment:subTitleAlignmentLeft];
+    concedeView.delegate = self;
+    concedeView.section = section++;
+    concedeView.lotteryId = LotteryIdJZRQSPF;
+    [scrollView addSubview:concedeView];
+    
+    y += concedeView.frame.size.height + 10;
+    [self createSectionHeaderWithTitle:@"比分" originY:y bgColor:UIColorFromHexColor(0x51b92c) superView:scrollView];
+    y += kSectionHeaderHeight;
+    ScoreView *winView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 80) score:[self getWinScoreInfos] numberOfRow:kNumOfBF alignment:subTitleAlignmentBottom];
+    winView.delegate = self;
+    winView.section = section++;
+    winView.lotteryId = LotteryIdJZBF;
+    [scrollView addSubview:winView];
+    y += winView.frame.size.height;
+    ScoreView *drawView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 40) score:[self getDrawScoreInfos] numberOfRow:kNumOfBF alignment:subTitleAlignmentBottom];
+    drawView.delegate = self;
+    drawView.section = section++;
+    drawView.lotteryId = LotteryIdJZBF;
+    [scrollView addSubview:drawView];
+    y += drawView.frame.size.height;
+    ScoreView *loseView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 80) score:[self getLoseScoreInfos] numberOfRow:kNumOfBF alignment:subTitleAlignmentBottom];
+    loseView.delegate = self;
+    loseView.section = section++;
+    loseView.lotteryId = LotteryIdJZBF;
+    [scrollView addSubview:loseView];
+    
+    y += loseView.frame.size.height + 10;
+    [self createSectionHeaderWithTitle:@"总进球" originY:y bgColor:UIColorFromHexColor(0x3f7ee7) superView:scrollView];
+    y += kSectionHeaderHeight;
+    ScoreView *ballView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 40) score:[self getZJQScoreInfos] numberOfRow:kNumOfZJQ alignment:subTitleAlignmentLeft];
+    ballView.delegate = self;
+    ballView.section = section++;
+    ballView.lotteryId = LotteryIdJZZJQ;
+    [scrollView addSubview:ballView];
+    
+    y += ballView.frame.size.height + 10;
+    [self createSectionHeaderWithTitle:@"半全场" originY:y bgColor:UIColorFromHexColor(0xffb525) superView:scrollView];
+    y += kSectionHeaderHeight;
+    ScoreView *halfView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 75) score:[self getBQCScoreInfos] numberOfRow:kNumOfBQC alignment:subTitleAlignmentLeft];
+    halfView.delegate = self;
+    halfView.section = section++;
+    halfView.lotteryId = LotteryIdJZBQC;
+    [scrollView addSubview:halfView];
+    
+    [scrollView setContentSize:CGSizeMake(self.contentView.frame.size.width, y + halfView.frame.size.height + 10)];
+    _scoreViews = @[noConcedeView, concedeView, winView, drawView, loseView, ballView, halfView];
+}
+
+#pragma mark - JCLQ
+
+- (void)createSFCContentView {
+    CGFloat y = 35;
+    CGFloat width = self.contentView.frame.size.width - 10 * 2;
+    [self createSectionHeaderWithTitle:@"客胜" originY:y bgColor:UIColorFromHexColor(0xe62e2e) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    
+    NSArray *scoreArray = [self getSFCScoreInfos];
+    ScoreView *guestView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 75) score:[scoreArray subarrayWithRange:NSMakeRange(6, 6)] numberOfRow:kNumOfSFC alignment:subTitleAlignmentLeft];
+    guestView.lotteryId = LotteryIdJLSFC;
+    guestView.scorePerfix = @"客胜";
+    guestView.delegate = self;
+    guestView.section = 0;
+    [self.contentView addSubview:guestView];
+    
+    y += guestView.frame.size.height + 10;
+    [self createSectionHeaderWithTitle:@"主胜" originY:y bgColor:UIColorFromHexColor(0xe62e2e) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    ScoreView *homeView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 75) score:[scoreArray subarrayWithRange:NSMakeRange(0, 6)] numberOfRow:kNumOfSFC alignment:subTitleAlignmentLeft];
+    homeView.delegate = self;
+    homeView.section = 1;
+    homeView.lotteryId = LotteryIdJLSFC;
+    homeView.scorePerfix = @"主胜";
+    [self.contentView addSubview:homeView];
+
+    _scoreViews = @[guestView, homeView];
+}
+
+- (void)createJLHHContentView {
+    CGFloat y = 35;
+    CGFloat width = self.contentView.frame.size.width - 10 * 2;
+    [self createSectionHeaderWithTitle:@"胜负" originY:y bgColor:UIColorFromHexColor(0xe62e2e) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    
+    NSMutableArray *scoreSFArray = [self getSFScoreInfos:[_scheduleInfo.bettingOdds objectForKey:ScoreNoConcedeKey]];
+    NSMutableArray *scoreRQSFArray = [self getSFScoreInfos:[_scheduleInfo.bettingOdds objectForKey:ScoreConcedeKey]];
+//    [scoreSFArray addObjectsFromArray:scoreRQSFArray];
+    ScoreView *sfView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 30) score:scoreSFArray numberOfRow:kNumOfSFC alignment:subTitleAlignmentLeft];
+    sfView.lotteryId = LotteryIdJLSF;
+    sfView.delegate = self;
+    sfView.section = 0;
+    [self.contentView addSubview:sfView];
+    
+    y += sfView.frame.size.height;
+    
+    NSString *letPointTitle = [NSString stringWithFormat:@"让分胜负(%+.2f)", _scheduleInfo.letPoint.floatValue];
+    [self createSectionHeaderWithTitle:letPointTitle originY:y bgColor:UIColorFromHexColor(0xe62e2e) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    
+    ScoreView *rqsfView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 30) score:scoreRQSFArray numberOfRow:kNumOfSFC alignment:subTitleAlignmentLeft];
+    rqsfView.lotteryId = LotteryIdJLRFSF;
+    rqsfView.delegate = self;
+    rqsfView.section = 1;
+    [self.contentView addSubview:rqsfView];
+    
+    y += rqsfView.frame.size.height + 10;
+    NSString *basePoint = [[_scheduleInfo.bettingOdds objectForKey:ScoreDXFKey] objectForKey:JLOddsBasePoint];
+    NSString *compareTitle = [NSString stringWithFormat:@"大小分 (%@)", basePoint];
+    [self createSectionHeaderWithTitle:compareTitle originY:y bgColor:UIColorFromHexColor(0xe62e2e) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    ScoreView *compareView = [[ScoreView alloc] initWithFrame:CGRectMake(10, y, width, 25) score:[self getDXFScoreInfos] numberOfRow:kNumOfSFC alignment:subTitleAlignmentLeft];
+    compareView.delegate = self;
+    compareView.section = 2;
+    compareView.lotteryId = LotteryIdJLDXF;
+    [self.contentView addSubview:compareView];
+    
+    y += compareView.frame.size.height + 10;
+    [self createSectionHeaderWithTitle:@"胜分差" originY:y bgColor:UIColorFromHexColor(0xe62e2e) superView:self.contentView];
+    y += kSectionHeaderHeight;
+    
+    UILabel *guestLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, y, 10, 75)];
+    [guestLabel setBackgroundColor:UIColorFromHexColor(0x999999)];
+    [guestLabel setFont:[UIFont systemFontOfSize:8]];
+    guestLabel.numberOfLines = 2;
+    [guestLabel setTextAlignment:NSTextAlignmentCenter];
+    [guestLabel setTextColor:[UIColor whiteColor]];
+    guestLabel.text = @"客胜";
+    [self.contentView addSubview:guestLabel];
+    UILabel *homeLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, y+75, 10, 75)];
+    [homeLabel setBackgroundColor:UIColorFromHexColor(0x3b9663)];
+    [homeLabel setFont:[UIFont systemFontOfSize:8]];
+    homeLabel.numberOfLines = 2;
+    [homeLabel setTextAlignment:NSTextAlignmentCenter];
+    [homeLabel setTextColor:[UIColor whiteColor]];
+    homeLabel.text = @"主胜";
+    [self.contentView addSubview:homeLabel];
+    
+    NSArray *scoreArray = [self getSFCScoreInfos];
+    NSArray *guestWinArray;
+    NSArray *homeWinArray;
+    if (scoreArray.count >= 12) {
+        guestWinArray = [scoreArray subarrayWithRange:NSMakeRange(6, 6)];
+        homeWinArray = [scoreArray subarrayWithRange:NSMakeRange(0, 6)];
+    }
+    ScoreView *guestView = [[ScoreView alloc] initWithFrame:CGRectMake(20, y, width-10, 75) score:guestWinArray numberOfRow:kNumOfSFC alignment:subTitleAlignmentLeft];
+    guestView.lotteryId = LotteryIdJLSFC;
+    guestView.scorePerfix = @"客胜";
+    guestView.delegate = self;
+    guestView.section = 3;
+    [self.contentView addSubview:guestView];
+    
+    y += guestView.frame.size.height;
+    ScoreView *homeView = [[ScoreView alloc] initWithFrame:CGRectMake(20, y, width-10, 75) score:homeWinArray numberOfRow:kNumOfSFC alignment:subTitleAlignmentLeft];
+    homeView.delegate = self;
+    homeView.section = 4;
+    homeView.lotteryId = LotteryIdJLSFC;
+    homeView.scorePerfix = @"主胜";
+    [self.contentView addSubview:homeView];
+    
+//    ScoreView *compareResultView = [[ScoreView alloc] initWithFrame:CGRectMake(20, y, width-10, 150) score:[self getSFCScoreInfos] numberOfRow:kNumOfSFC alignment:subTitleAlignmentLeft];
+//    compareResultView.delegate = self;
+//    compareResultView.section = 3;
+//    compareResultView.lotteryId = LotteryIdJLSFC;
+//    [self.contentView addSubview:compareResultView];
+    _scoreViews = @[sfView, rqsfView, compareView, guestView, homeView];
+}
+
+- (void)createSectionHeaderWithTitle:(NSString *)title originY:(CGFloat)y bgColor:(UIColor *)color superView:(UIView *)superView {
+    UILabel *winLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, y, self.contentView.frame.size.width - 10 * 2, kSectionHeaderHeight)];
+    [winLabel setText:title];
+    [winLabel setTextAlignment:NSTextAlignmentCenter];
+    [winLabel setBackgroundColor:color];
+    winLabel.font = [UIFont systemFontOfSize:12];
+    winLabel.textColor = [UIColor whiteColor];
+    [superView addSubview:winLabel];
+}
+
+- (void)createBtnWithTitle:(NSString *)title originX:(CGFloat)x action:(SEL)action {
+    UIButton *btn = [[UIButton alloc] initWithFrame:CGRectMake(x, self.contentView.frame.size.height - 44, 150, 44)];
+    [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    [btn setTitle:title forState:UIControlStateNormal];
+    [btn.titleLabel setFont:[UIFont systemFontOfSize:15.0]];
+    [btn setTitleColor:UIColorFromHexColor(0x666161) forState:UIControlStateNormal];
+    [self.contentView addSubview:btn];
+}
+
+- (NSArray *)getWinScoreInfos {
+    NSMutableArray *winScoreArray = [NSMutableArray array];
+    NSDictionary *scoreOdds = [_scheduleInfo.bettingOdds objectForKey:ScoreScoresKey];
+    if (scoreOdds != nil && scoreOdds.count > 0) {
+        for (int i = 1; i <= 5; i++) {
+            for (int j = 0; j <= 2; j++) {
+                if(j < i) {
+                    ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+                    scoreInfo.score = [NSString stringWithFormat:@"%d:%d",i,j];
+                    NSString *key = [NSString stringWithFormat:@"v%d%d", i, j];
+                    scoreInfo.odds = [scoreOdds objectForKey:key];
+                    scoreInfo.key = key;
+                    [winScoreArray addObject:scoreInfo];
+                }
+            }
+        }
+        
+        ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+        scoreInfo.score = @"胜其他";
+        scoreInfo.odds = [scoreOdds objectForKey:@"v90"];
+        scoreInfo.key = @"v90";
+        [winScoreArray addObject:scoreInfo];
+    }
+    return winScoreArray;
+}
+
+- (NSArray *)getDrawScoreInfos {
+    NSMutableArray *winScoreArray = [NSMutableArray array];
+    NSDictionary *scoreOdds = [_scheduleInfo.bettingOdds objectForKey:ScoreScoresKey];
+    if (scoreOdds != nil && scoreOdds.count > 0) {
+        for (int i = 0; i <= 3; i++) {
+            for (int j = 0; j <= 3; j++) {
+                if(j == i) {
+                    ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+                    scoreInfo.score = [NSString stringWithFormat:@"%d:%d",i,j];
+                    NSString *key = [NSString stringWithFormat:@"v%d%d", i, j];
+                    scoreInfo.odds = [scoreOdds objectForKey:key];
+                    scoreInfo.key = key;
+                    [winScoreArray addObject:scoreInfo];
+                }
+            }
+        }
+        
+        ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+        scoreInfo.score = @"平其他";
+        scoreInfo.odds = [scoreOdds objectForKey:@"v99"];
+        scoreInfo.key = @"v99";
+        [winScoreArray addObject:scoreInfo];
+    }
+    return winScoreArray;
+}
+
+- (NSArray *)getLoseScoreInfos {
+    NSMutableArray *winScoreArray = [NSMutableArray array];
+    NSDictionary *scoreOdds = [_scheduleInfo.bettingOdds objectForKey:ScoreScoresKey];
+    if (scoreOdds != nil && scoreOdds.count > 0) {
+        for (int i = 0; i <= 2; i++) {
+            for (int j = 1; j <= 5; j++) {
+                if(j > i) {
+                    ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+                    scoreInfo.score = [NSString stringWithFormat:@"%d:%d",i,j];
+                    NSString *key = [NSString stringWithFormat:@"v%d%d", i, j];
+                    scoreInfo.odds = [scoreOdds objectForKey:key];
+                    scoreInfo.key = key;
+                    [winScoreArray addObject:scoreInfo];
+                }
+            }
+        }
+        
+        ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+        scoreInfo.score = @"负其他";
+        scoreInfo.odds = [scoreOdds objectForKey:@"v09"];
+        scoreInfo.key = @"v09";
+        [winScoreArray addObject:scoreInfo];
+    }
+    return winScoreArray;
+}
+
+- (NSArray *)getZJQScoreInfos {
+    NSMutableArray *winScoreArray = [NSMutableArray array];
+    NSDictionary *scoreOdds = [_scheduleInfo.bettingOdds objectForKey:ScoreBallsKey];
+    if (scoreOdds != nil && scoreOdds.count > 0) {
+        for (int i = 0; i <= 7; i++) {
+            ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+            NSString *title = [NSString stringWithFormat:@"%d", i];
+            if (i == 7) {
+                title = @"7+";
+            }
+            scoreInfo.score = title;
+            NSString *key = [NSString stringWithFormat:@"v%d", i];
+            scoreInfo.odds = [scoreOdds objectForKey:key];
+            scoreInfo.key = key;
+            [winScoreArray addObject:scoreInfo];
+        }
+    }
+    return winScoreArray;
+}
+
+- (NSArray *)getBQCScoreInfos {
+    NSMutableArray *winScoreArray = [NSMutableArray array];
+    NSDictionary *scoreOdds = [_scheduleInfo.bettingOdds objectForKey:ScoreHalfKey];
+    if (scoreOdds != nil && scoreOdds.count > 0) {
+        NSArray *scores = @[@(3), @(1), @(0)];
+        NSArray *scoreTitles = @[@"胜", @"平", @"负"];
+        
+        for (int i = 0; i <= 2; i++) {
+            for (int j = 0; j <= 2; j++) {
+                
+                ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+                scoreInfo.score = [NSString stringWithFormat:@"%@%@", [scoreTitles objectAtIndex:i], [scoreTitles objectAtIndex:j]];
+                NSString *key = [NSString stringWithFormat:@"v%@%@", [scores objectAtIndex:i], [scores objectAtIndex:j]];
+                scoreInfo.odds = [scoreOdds objectForKey:key];
+                scoreInfo.key = key;
+                [winScoreArray addObject:scoreInfo];
+                
+            }
+        }
+    }
+
+    return winScoreArray;
+}
+
+- (NSArray *)getRQSPFScoreInfos:(NSDictionary *)scoreOdds {
+    NSMutableArray *winScoreArray = [NSMutableArray array];
+    if (scoreOdds != nil && scoreOdds.count > 0) {
+        NSArray *scores = @[@(3), @(1), @(0)];
+        NSArray *scoreTitles = @[@"胜", @"平", @"负"];
+        
+        for (int j = 0; j <= 2; j++) {
+            ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+            scoreInfo.score = [NSString stringWithFormat:@"%@", [scoreTitles objectAtIndex:j]];
+            NSString *key = [NSString stringWithFormat:@"v%@", [scores objectAtIndex:j]];
+            scoreInfo.odds = [scoreOdds objectForKey:key];
+            scoreInfo.key = key;
+            [winScoreArray addObject:scoreInfo];
+        }
+    }
+    return winScoreArray;
+}
+
+- (NSArray *)getSPFScoreInfos {
+    NSDictionary *scoreOdds = [_scheduleInfo.bettingOdds objectForKey:ScoreNoConcedeKey];
+    return [self getRQSPFScoreInfos:scoreOdds];
+}
+
+- (NSArray *)getSFCScoreInfos {
+    NSMutableArray *winScoreArray = [NSMutableArray array];
+    NSDictionary *scoreOdds = [_scheduleInfo.bettingOdds objectForKey:ScoreSFCKey];
+    if (scoreOdds != nil && scoreOdds.count > 0) {
+        NSArray *scoreTitles = @[@"1-5", @"6-10", @"11-15", @"16-20", @"21-25", @"26+"];
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < scoreTitles.count; j++) {
+                ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+                scoreInfo.score = [NSString stringWithFormat:@"%@", [scoreTitles objectAtIndex:j]];
+                NSString *key = [NSString stringWithFormat:@"v%d%d", i, j + 1];
+                scoreInfo.odds = [scoreOdds objectForKey:key];
+                scoreInfo.key = key;
+                [winScoreArray addObject:scoreInfo];
+            }
+        }
+    }
+    return winScoreArray;
+}
+
+- (NSMutableArray *)getSFScoreInfos:(NSDictionary *)scoreOdds {
+    NSMutableArray *winScoreArray = [NSMutableArray array];
+    if (scoreOdds != nil && scoreOdds.count > 0) {
+        NSArray *scores = @[@(0), @(3)];
+        NSArray *scoreTitles = @[@"客胜", @"主胜"];
+        
+        for (int i = 0; i < 2; i++) {
+            ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+            scoreInfo.score = [NSString stringWithFormat:@"%@", [scoreTitles objectAtIndex:i]];
+            NSString *key = [NSString stringWithFormat:@"v%@", [scores objectAtIndex:i]];
+            scoreInfo.odds = [scoreOdds objectForKey:key];
+            scoreInfo.key = key;
+            [winScoreArray addObject:scoreInfo];
+        }
+    }
+    return winScoreArray;
+}
+
+- (NSMutableArray *)getDXFScoreInfos {
+    NSMutableArray *winScoreArray = [NSMutableArray array];
+    NSDictionary *scoreOdds = [_scheduleInfo.bettingOdds objectForKey:ScoreDXFKey];
+    if (scoreOdds != nil && scoreOdds.count > 0) {
+        NSArray *scoreTitles = @[@"大分", @"小分"];
+        for (int i = 0; i < 2; i++) {
+            ScoreInfo *scoreInfo = [[ScoreInfo alloc] init];
+            scoreInfo.score = [NSString stringWithFormat:@"%@", [scoreTitles objectAtIndex:i]];
+            NSString *key = [NSString stringWithFormat:@"v%d", i+1];
+            scoreInfo.odds = [scoreOdds objectForKey:key];
+            scoreInfo.key = key;
+            [winScoreArray addObject:scoreInfo];
+        }
+    }
+    return winScoreArray;
+}
+
+@end

@@ -1,0 +1,26 @@
+//
+//  LeagueAlertView.h
+//  TigerLottery
+//
+//  Created by Legolas on 16/5/24.
+//  Copyright © 2016年 adcocoa. All rights reserved.
+//
+
+#import "CustomAlertView.h"
+
+@protocol LeagueAlertViewDelegate <NSObject>
+
+@optional
+- (void)didSelectedLeagues:(NSArray *)leagues;
+
+@end
+
+@interface LeagueAlertView : CustomAlertView
+
+@property (nonatomic, assign) id<LeagueAlertViewDelegate> delegate;
+
+- (instancetype)initWithLeagues:(NSArray *)leaguesDic lotteryId:(LotteryId)lotteryId;
+- (void)selecteLeagueWithLeagueDics:(NSArray *)leagues;
+
+@end
+

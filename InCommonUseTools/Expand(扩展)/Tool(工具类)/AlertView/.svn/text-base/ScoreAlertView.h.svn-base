@@ -1,0 +1,33 @@
+//
+//  ScoreAlertView.h
+//  TigerLottery
+//
+//  Created by Legolas on 15/1/7.
+//  Copyright (c) 2015年 adcocoa. All rights reserved.
+//
+
+typedef NS_ENUM(NSInteger, ScoreAlertViewType) {
+    ScoreAlertViewTypeSPF,
+    ScoreAlertViewTypeZJQ,
+    ScoreAlertViewTypeHHTZ,
+    ScoreAlertViewTypeBQC,
+};
+
+#import "CustomAlertView.h"
+
+@class ScheduleInfo;
+
+@interface ScoreAlertView : CustomAlertView
+
+@property (nonatomic, assign) id delegate;
+
+- (instancetype)initWithType:(LotteryId)type scheduleInfo:(ScheduleInfo *)scheduleInfo;
+
+@end
+
+@protocol ScoreAlertViewDelegate <NSObject>
+
+@optional
+- (void)didSelectedScheduleInfo:(ScheduleInfo *)scheduleInfo;
+
+@end

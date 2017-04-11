@@ -1,0 +1,41 @@
+//
+//  PayHelper.m
+//  TigerLottery
+//
+//  Created by Legolas on 16/2/19.
+//  Copyright © 2016年 adcocoa. All rights reserved.
+//
+
+#import "PayHelper.h"
+#import <AlipaySDK/AlipaySDK.h>
+#import "ConstString.h"
+#import "Toast.h"
+
+@implementation PayHelper
+
++ (void)requestAlipayWithOrderInfo:(NSString *)orderInfo {
+    [[AlipaySDK defaultService] payOrder:orderInfo fromScheme:kAppSchemes callback:^(NSDictionary *resultDic) {
+        NSInteger code = [[resultDic objectForKey:@"resultStatus"] integerValue];
+        switch (code) {
+            case AlipayErrorCodeSuccess:
+                [[Toast makeText:@"订单支付成功"] show];
+                break;
+            case AlipayErrorCodeProcessing:
+                [[Toast makeText:@"订单正在处理中"] show];
+                break;
+            case AlipayErrorCodeFailed:
+                [[Toast makeText:@"订单支付失败"] show];
+                break;
+            case AlipayErrorCodeCanceled:
+                [[Toast makeText:@"用户中途取消"] show];
+                break;
+            case AlipayErrorCodeNotNet:
+                [[Toast makeText:ErrorTipsNoNetwork] show];
+                break;
+            default:
+                break;
+        }
+    }];
+}
+
+@end

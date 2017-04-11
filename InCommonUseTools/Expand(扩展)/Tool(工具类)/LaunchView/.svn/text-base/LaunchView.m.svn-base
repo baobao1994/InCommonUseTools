@@ -1,0 +1,173 @@
+//
+//  LaunchView.m
+//  Lemon
+//
+//  Created by Legolas on 13-12-5.
+//  Copyright (c) 2013年 Adcocoa. All rights reserved.
+//
+
+#import "LaunchView.h"
+#import "UIImageView+WebCache.h"
+#import "UIImage+ImageCache.h"
+#import "AppDelegate.h"
+#import <MakeFramework/MakeFramework.h>
+#import "ConstString.h"
+#import "BaseWebViewController.h"
+#import "Activity.h"
+#import "SDWebImageManager.h"
+
+#define kLaunchViewDuration 5
+
+NSString *const LaunchViewConfigKey = @"LaunchViewConfigKey";
+NSString *const LaunchViewImageNameKey = @"launch";
+
+@interface LaunchView () <CAAnimationDelegate>
+
+@property (nonatomic, strong) NSDictionary *latestConfig;
+@property (nonatomic, retain) UIImageView *launchImageView;
+@property (nonatomic, strong) NSTimer *timer;
+@property (nonatomic, assign) BOOL isTap;
+@property (nonatomic, assign) BOOL isFirstGuidePage;
+
+- (void)setupView;
+- (void)hideLauchAnimation;
+
+@end
+
+
+@implementation LaunchView
+
+#pragma mark - Init & dealloc
+
+- (id)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self setupView];
+    }
+    return self;
+}
+
+- (void)setupView {
+    CGSize size = [UIScreen mainScreen].bounds.size;
+    self.frame = CGRectMake(0, 0, size.width, size.height);
+    CGFloat scale = [UIScreen mainScreen].scale;
+    [[NWApi sharedInstance] requestLaunchImageWithSize:[NSString stringWithFormat:@"%.0f_%.0f", size.width * scale, size.height * scale] delegate:self];
+    NSDictionary *launchConfig = [[NSUserDefaults standardUserDefaults] objectForKey:LaunchViewConfigKey];
+    NSTimeInterval endTime = [[launchConfig objectForKey:@"end_time"] integerValue];
+    NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+    NSString *path = [DOCUMENT_PATH stringByAppendingPathComponent:LaunchViewImageNameKey];
+    UIImage *launchImage = [UIImage imageWithContentsOfFile:path];
+    if (launchImage && now < endTime) {
+        self.backgroundColor = [UIColor whiteColor];
+        self.launchImageView = [[UIImageView alloc] initWithFrame:self.frame];
+        self.launchImageView.userInteractionEnabled = YES;
+        [self.launchImageView setImage:launchImage];
+        [self addSubview:self.launchImageView];
+        [self startLauchAnimation];
+        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(launchViewTap:)];
+        [self.launchImageView addGestureRecognizer:tap];
+        
+        UIButton *passBtn = [[UIButton alloc] initWithFrame:CGRectMake(self.frame.size.width - 65, 25, 55, 26)];
+        [passBtn setTitle:@"跳过" forState:UIControlStateNormal];
+        passBtn.titleLabel.font = [UIFont systemFontOfSize:12];
+        passBtn.titleEdgeInsets = UIEdgeInsetsMake(0, -12, 0, 0);
+        [passBtn setBackgroundImage:[UIImage imageNamed:@"launch_pass_btn"] forState:UIControlStateNormal];
+        [passBtn addTarget:self action:@selector(hideLauchAnimation) forControlEvents:UIControlEventTouchDown];
+        [self.launchImageView addSubview:passBtn];
+        
+        UIButton *timerBtn = [[UIButton alloc] initWithFrame:CGRectMake(35, 4, 15, 17)];
+        [timerBtn setTitle:@"5" forState:UIControlStateNormal];
+        timerBtn.titleLabel.font = [UIFont systemFontOfSize:10];
+        timerBtn.userInteractionEnabled = NO;
+        [timerBtn setBackgroundImage:[UIImage imageNamed:@"launch_timer"] forState:UIControlStateNormal];
+        [passBtn addSubview:timerBtn];
+        _timer = [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(countDownTimer:) userInfo:timerBtn repeats:YES];
+    }
+}
+
+#pragma mark - Public Method
+
+- (void)setDelegate:(id<LaunchViewDelegate>)delegate {
+    _delegate = delegate;
+    if (_launchImageView == nil) {
+        DELEGATE_CALLBACK_ONE_PARAMETER(self.delegate, @selector(hideLaunchViewDidFinish:), self);
+    }
+}
+
+#pragma mark - NWDataProcessDelegate
+
+- (void)requestLaunchImageDidFinish:(NSDictionary *)resultDic {
+    NSInteger result = [[resultDic objectForKey:ResultCode] integerValue];
+    if (result == NW_NO_ERROR) {
+        _latestConfig = resultDic;
+        [self saveLaunchImage:[resultDic objectForKey:@"image"]];
+    }
+}
+
+#pragma mark - Private Method
+
+- (void)launchViewTap:(UISwipeGestureRecognizer *)recognizer {
+    _isTap = YES;
+    NSDictionary *launchConfig = [[NSUserDefaults standardUserDefaults] objectForKey:LaunchViewConfigKey];
+    Activity *activity = [[Activity alloc] initWithDictionary:launchConfig];
+    [self hideLauchAnimation];
+    DELEGATE_CALLBACK_ONE_PARAMETER(self.delegate, @selector(didSelectedLaunchViewWithActivity:), activity);
+}
+
+- (void)saveLaunchImage:(NSString *)url {
+    NSDictionary *launchConfig = [[NSUserDefaults standardUserDefaults] objectForKey:LaunchViewConfigKey];
+    NSString *imageUrl = [launchConfig objectForKey:@"image"];
+    NSString *path = [DOCUMENT_PATH stringByAppendingPathComponent:LaunchViewImageNameKey];
+    UIImage *launchImage = [UIImage imageWithContentsOfFile:path];
+    if (![url isEqualToString:imageUrl] || launchImage == nil) {
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            [[SDWebImageManager sharedManager] downloadImageWithURL:[NSURL URLWithString:url] options:0 progress:nil completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
+                if (image) {
+                    NSString *path = [DOCUMENT_PATH stringByAppendingPathComponent:LaunchViewImageNameKey];
+                    NSData *imageData = UIImagePNGRepresentation(image);
+                    [imageData writeToFile:path atomically:YES];
+                    [[NSUserDefaults standardUserDefaults] setObject:_latestConfig forKey:LaunchViewConfigKey];
+                }
+            }];
+        });
+    }
+}
+
+- (void)startLauchAnimation {
+    [[[UIApplication sharedApplication] keyWindow] addSubview:self];
+    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kLaunchViewDuration * NSEC_PER_SEC));
+    dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+        [self hideLauchAnimation];
+    });
+    
+}
+
+- (void)hideLauchAnimation {
+    CATransition *animation = [CATransition animation];
+    animation.duration = 0.75;
+    animation.timingFunction = UIViewAnimationCurveEaseInOut;
+    animation.type = kCATransitionFade;
+    animation.delegate = self;
+    [[UIApplication sharedApplication].keyWindow.layer addAnimation:animation forKey:@"animation"];
+//    [[UIApplication sharedApplication].keyWindow sendSubviewToBack:self];
+}
+
+- (void)animationDidStop:(CAAnimation *)animation finished:(BOOL)flag {
+    self.alpha = 0.0;
+    if (!_isTap) {
+        DELEGATE_CALLBACK_ONE_PARAMETER(self.delegate, @selector(hideLaunchViewDidFinish:), self);
+    }
+    INVALIDATE_TIMER(_timer);
+    if (self.isFirstGuidePage) {
+        [self removeFromSuperview];
+    }
+}
+
+- (void)countDownTimer:(NSTimer *)timer {
+    UIButton *timerBtn = [timer userInfo];
+    NSInteger interval = MAX(0, timerBtn.currentTitle.integerValue - 1);
+    [timerBtn setTitle:[NSString stringWithFormat:@"%@", @(interval)] forState:UIControlStateNormal];
+}
+
+@end
+

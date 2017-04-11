@@ -1,0 +1,15 @@
+//
+//  PayHelper.h
+//  TigerLottery
+//
+//  Created by Legolas on 16/2/19.
+//  Copyright © 2016年 adcocoa. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+@interface PayHelper : NSObject
+
++ (void)requestAlipayWithOrderInfo:(NSString *)orderInfo;
+
+@end

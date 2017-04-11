@@ -1,0 +1,32 @@
+//
+//  ScoreView.h
+//  TigerLottery
+//
+//  Created by Legolas on 15/1/8.
+//  Copyright (c) 2015年 adcocoa. All rights reserved.
+//
+
+#import "SubTitleButton.h"
+
+@class ScoreInfo;
+
+@interface ScoreView : UIView
+
+@property (nonatomic, assign) id delegate;
+@property (nonatomic, assign) NSInteger section;
+@property (nonatomic, assign) LotteryId lotteryId;
+@property (nonatomic, copy) NSString *scorePerfix;
+
+- (instancetype)initWithFrame:(CGRect)frame score:(NSArray *)scores numberOfRow:(NSInteger)numOfRow alignment:(SubTitleAlignment)alignment;
+- (void)selectBtnWithIndex:(NSInteger)index;
+- (NSMutableArray *)selectedIndexPaths;
+- (NSMutableArray *)selectedScores;
+
+@end
+
+@protocol ScoreViewDelegate <NSObject>
+
+@optional
+- (void)didSelectItemAtIndex:(NSIndexPath *)indexPath scoreInfo:(ScoreInfo *)scoreInfo;
+
+@end

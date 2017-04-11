@@ -1,0 +1,231 @@
+//
+//  LeagueAlertView.m
+//  TigerLottery
+//
+//  Created by Legolas on 16/5/24.
+//  Copyright © 2016年 adcocoa. All rights reserved.
+//
+
+#import "LeagueAlertView.h"
+#import "Toast.h"
+#import "LotteryConfig.h"
+
+#define kNumOfRow 3
+
+@interface LeagueAlertView ()
+
+@property (nonatomic, strong) NSArray *leaguesDics;
+@property (nonatomic, strong) NSMutableArray *leagueItems;
+@property (nonatomic, strong) UILabel *tipsLabel;
+@property (nonatomic, strong) NSMutableArray *selectedItems;
+@property (nonatomic, assign) LotteryId lotteryId;
+
+@end
+
+
+@implementation LeagueAlertView
+
+- (instancetype)initWithLeagues:(NSArray *)leaguesDics lotteryId:(LotteryId)lotteryId {
+    if (self = [super init]) {
+        _lotteryId = lotteryId;
+        _leaguesDics = leaguesDics;
+        _leagueItems = [[NSMutableArray alloc] init];
+        _selectedItems = [[NSMutableArray alloc] init];
+        CGSize screenSize = [UIScreen mainScreen].bounds.size;
+        self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, screenSize.width - 20, 350)];
+        self.contentView.center = CGPointMake(screenSize.width / 2, screenSize.height / 2);
+        self.contentView.backgroundColor = UIColorFromHexColor(0xf2f2f2);
+        
+        [self createTitleView];
+        [self createLeagueView];
+        _tipsLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, self.contentView.frame.size.height - 74, self.contentView.frame.size.width, 30)];
+        _tipsLabel.textColor = UIColorFromHexColor(0x333232);
+        _tipsLabel.font = [UIFont systemFontOfSize:14.0];
+        _tipsLabel.textAlignment = NSTextAlignmentCenter;
+        [self.contentView addSubview:_tipsLabel];
+        
+        [self createBtnWithTitle:@"取消" originX:0 action:@selector(hide)];
+        [self createBtnWithTitle:@"确认" originX:self.contentView.frame.size.width / 2 action:@selector(confirmSelectedLeagues)];
+        UIView *line = [SystemConfig lineViewWithFrame:CGRectMake(0, self.contentView.frame.size.height - 44, self.contentView.frame.size.width, 1)];
+        [self.contentView addSubview:line];
+        UIView *lineH = [SystemConfig lineViewWithFrame:CGRectMake(self.contentView.frame.size.width / 2, self.contentView.frame.size.height - 44, 1, 44)];
+        [self.contentView addSubview:lineH];
+    }
+    return self;
+}
+
+#pragma mark - PublicMethod
+
+- (void)selecteLeagueWithLeagueDics:(NSArray *)leagues {
+    if (leagues.count > 0) {
+        [_selectedItems removeAllObjects];
+    }
+    for (UIButton *btn in _leagueItems) {
+        for (NSDictionary *leagueDic in leagues) {
+            NSString *league = [[leagueDic allKeys] firstObject];
+            if ([league isEqualToString:btn.titleLabel.text]) {
+                [_selectedItems addObject:btn];
+                btn.selected = YES;
+            }
+        }
+    }
+    [self updateSelectedItem];
+    [self updateTips];
+}
+
+#pragma mark - Action
+
+- (void)confirmSelectedLeagues {
+    NSMutableArray *leagues = [NSMutableArray array];
+    NSMutableArray *selectedItems = [NSMutableArray array];
+    for (UIButton *btn in _leagueItems) {
+        if (btn.selected) {
+            [selectedItems addObject:btn];
+            [leagues addObject:btn.titleLabel.text];
+        }
+    }
+    if (leagues.count > 0) {
+        _selectedItems = selectedItems;
+        DELEGATE_CALLBACK_ONE_PARAMETER(_delegate, @selector(didSelectedLeagues:), leagues);
+        [self hide];
+    }else {
+        [[Toast makeText:@"筛选结果为空，请重新选择"] show];
+    }
+}
+
+- (IBAction)changedLeagueGroup:(UISegmentedControl *)segment {
+    switch (segment.selectedSegmentIndex) {
+        case 0:
+        {
+            for (UIButton *btn in _leagueItems) {
+                btn.selected = YES;
+            }
+        }
+            break;
+        case 1:
+        {
+            [self shiftAllLeagues];
+        }
+            break;
+        case 2:
+        {
+            [self selecteFiveLeagues];
+        }
+            break;
+        default:
+            break;
+    }
+    [self updateTips];
+}
+
+- (IBAction)selectedLeague:(UIButton *)sender {
+    sender.selected = !sender.selected;
+    [self updateTips];
+}
+
+- (void)updateSelectedItem {
+    for (UIButton *btn in _leagueItems) {
+        btn.selected = [_selectedItems containsObject:btn];
+    }
+}
+
+#pragma mark - Private Method
+
+- (void)selecteFiveLeagues {
+    NSArray *fiveLeagues = @[@"德甲", @"西甲", @"英超", @"法甲", @"意甲"];
+    for (UIButton *btn in _leagueItems) {
+        for (NSString *league in fiveLeagues) {
+            if ([league isEqualToString:btn.titleLabel.text]) {
+                btn.selected = YES;
+                break;
+            }else {
+                btn.selected = NO;
+            }
+        }
+    }
+}
+
+- (void)selectAllLeagues {
+    for (UIButton *btn in _leagueItems) {
+        btn.selected = YES;
+        [_selectedItems addObject:btn];
+    }
+}
+
+- (void)shiftAllLeagues {
+    for (UIButton *btn in _leagueItems) {
+        btn.selected = !btn.selected;
+    }
+}
+
+- (void)createTitleView {
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 10, self.contentView.frame.size.width, 35)];
+    [titleLabel setTextColor:UIColorFromHexColor(0x333131)];
+    [titleLabel setTextAlignment:NSTextAlignmentCenter];
+    titleLabel.text = @"赛事选择";
+    [self.contentView addSubview:titleLabel];
+    NSArray *items = @[@"全选", @"反选", @"仅五大联赛"];
+    LotteryId rootLotteryId = [LotteryConfig getRootLotteryId:_lotteryId];
+    if (rootLotteryId == LotteryIdJCLQ) {
+        items = @[@"全选", @"反选"];
+    }
+    UISegmentedControl *segmentedControl = [[UISegmentedControl alloc] initWithItems:items];
+    segmentedControl.frame = CGRectMake(15, titleLabel.frame.size.height + 20, self.contentView.frame.size.width - 30, 30);
+    segmentedControl.tintColor = UIColorFromHexColor(0xe62e2e);
+    [segmentedControl addTarget:self action:@selector(changedLeagueGroup:) forControlEvents:UIControlEventValueChanged];
+    segmentedControl.momentary = YES;
+    [self.contentView addSubview:segmentedControl];
+}
+
+- (void)createBtnWithTitle:(NSString *)title originX:(CGFloat)x action:(SEL)action {
+    UIButton *btn = [[UIButton alloc] initWithFrame:CGRectMake(x, self.contentView.frame.size.height - 44, self.contentView.frame.size.width / 2, 44)];
+    [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    [btn setTitle:title forState:UIControlStateNormal];
+    [btn.titleLabel setFont:[UIFont systemFontOfSize:15.0]];
+    [btn setTitleColor:UIColorFromHexColor(0x666161) forState:UIControlStateNormal];
+    [self.contentView addSubview:btn];
+}
+
+- (void)createLeagueView {
+    UIScrollView *scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 95, self.contentView.frame.size.width, 180)];
+    [self.contentView addSubview:scrollView];
+
+    CGFloat padding = 10;
+    CGFloat width = (self.contentView.frame.size.width - (kNumOfRow + 1) * padding) / kNumOfRow;
+    
+    for (int i = 0; i < _leaguesDics.count; i++) {
+        int column = i % kNumOfRow;
+        int row = i / kNumOfRow;
+        UIButton *btn = [[UIButton alloc] initWithFrame:CGRectMake(padding + (width + padding) * column, row * 40 + 5, width, 30)];
+        [btn setBackgroundImage:[UIImage imageNamed:@"league_normal"] forState:UIControlStateNormal];
+        [btn setBackgroundImage:[UIImage imageNamed:@"league_selected"] forState:UIControlStateSelected];
+        [btn addTarget:self action:@selector(selectedLeague:) forControlEvents:UIControlEventTouchUpInside];
+        NSString *league = [[[_leaguesDics objectAtIndex:i] allKeys] firstObject];
+        [btn setTitle:league forState:UIControlStateNormal];
+        [btn.titleLabel setFont:[UIFont systemFontOfSize:15.0]];
+        [btn setTitleColor:UIColorFromHexColor(0x333333) forState:UIControlStateNormal];
+        [btn setTitleColor:UIColorFromHexColor(0xe73f40) forState:UIControlStateSelected];
+        btn.tag = i;
+        [_leagueItems addObject:btn];
+        [scrollView addSubview:btn];
+    }
+    NSInteger row = (_leaguesDics.count + kNumOfRow - 1) / kNumOfRow;
+    scrollView.contentSize = CGSizeMake(scrollView.frame.size.width, row * 40 + 10);
+}
+
+- (void)updateTips {
+    NSInteger totalCount = 0;
+    for (UIButton *btn in _leagueItems) {
+        if (btn.selected) {
+            NSNumber *count = [[[_leaguesDics objectAtIndex:btn.tag] allValues] lastObject];
+            totalCount += count.integerValue;
+        }
+    }
+    NSString *tips = [NSString stringWithFormat:@"共%@场比赛", @(totalCount)];
+    NSMutableAttributedString *tipsAttributed = [[NSMutableAttributedString alloc] initWithString:tips];
+    NSRange countRange = [tips rangeOfString:[NSString stringWithFormat:@"%@", @(totalCount)] options:NSCaseInsensitiveSearch];
+    [tipsAttributed addAttribute:NSForegroundColorAttributeName value:UIColorFromHexColor(0xe62e2e) range:countRange];
+    _tipsLabel.attributedText = tipsAttributed;
+}
+
+@end
